@@ -13,3 +13,11 @@ IGNORED_DIRS = {
 
 # Files bigger than this are skipped (1 MB). Protects memory and speed.
 MAX_FILE_SIZE_BYTES =1_000_000
+
+# Words shorter than this are dropped when tokenizing ("a","x","l").
+MIN_TOKEN_LENGTH = 2
+
+#Very common english words. Only removed if you ask for it (see tokenizer.py)
+STOP_WORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "is", "it", "of", "on", "or", "the", "to", "to", "with",
+}
