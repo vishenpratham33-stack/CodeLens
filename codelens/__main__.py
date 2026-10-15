@@ -2,7 +2,7 @@
     python -m codelens crawl <folder>
     python -m codelens tokens "some text"
     python -m codelens stats <folder>
-    python -m codelens search <folder> "query" [--any]
+    python -m codelens search <folder> "query" [--any] [--limit N]
 """
 
 import argparse
@@ -10,7 +10,7 @@ import time
 
 from codelens.crawler import crawl
 from codelens.index import build_index
-from codelens.search import find_snippet, search_all, search_any
+from codelens.search import find_snippet, ranked_search
 from codelens.tokenizer import count_terms, tokenize
 
 
@@ -36,6 +36,7 @@ def run_stats(folder: str) -> None:
         files += 1
         for word, n in count_terms(tokens).items():
             all_counts[word] = all_counts.get(word, 0) + n
+
     print(f"Files read:      {files}")
     print(f"Total tokens:    {total_tokens}")
     print(f"Unique words     {len(all_counts)}")
@@ -45,26 +46,27 @@ def run_stats(folder: str) -> None:
             print(f"  {word:<15} {n}")
 
 
-def run_search(folder: str, query: str, match_any: bool) -> None:
+def run_search(folder: str, query: str, match_any: bool, limit: int) -> None:
     start = time.perf_counter()
     index = build_index(folder)
     build_seconds = time.perf_counter() - start
 
     start = time.perf_counter()
-    doc_ids = search_any(index, query) if match_any else search_all(index, query)
+    total, best = ranked_search(index, query, limit, match_any)
     search_ms = (time.perf_counter() - start) * 1000
 
     words = list(dict.fromkeys(tokenize(query)))
     print(f"Indexed {index.doc_count} files "
           f"({index.vocabulary_size} unique words) in {build_seconds:.2f} s")
-    print(f"Found {len(doc_ids)} file(s) for {words} in {search_ms:.3f} ms\n")
+    print(f"Found {total} file(s) for {words} in {search_ms:.3f} ms, "
+          f"showing the best {len(best)}\n")
 
-    for doc_id in doc_ids[:20]:
+    for rank, (score, doc_id) in enumerate(best, start=1):
         path = index.docs[doc_id]["path"]
-        print(path)
+        print(f"{rank:>2}. {path}   (score {score:.2f})")
         snippet = find_snippet(folder, path, words)
         if snippet:
-            print(f"    line {snippet[0]}: {snippet[1]}")
+            print(f"     linr{snippet[0]}: {snippet[1]}")
 
 
 def main() -> None:
@@ -85,6 +87,7 @@ def main() -> None:
     search_cmd.add_argument("query", help="what to look for (use quotes)")
     search_cmd.add_argument("--any", action="store_true", 
                             help="match files with ANY word instead of ALL words")
+    search_cmd.add_argument("--limit",type=int, default=10, help="how many results to show (default 10)")
 
     args = parser.parse_args()
 
@@ -95,7 +98,7 @@ def main() -> None:
     elif args.command == "stats":
         run_stats(args.folder)
     elif args.command == "search":
-        run_search(args.folder, args.query, args.any)
+        run_search(args.folder, args.query, args.any, args.limit)
 
 
 if __name__ == "__main__":
