@@ -3,6 +3,7 @@
     python -m codelens tokens "some text"
     python -m codelens stats <folder>
     python -m codelens search <folder> "query" [--any] [--limit N]
+    python -m codelens suggest <folder> <prefix> [--limit N]
 """
 
 import argparse
@@ -12,6 +13,7 @@ from codelens.crawler import crawl
 from codelens.index import build_index
 from codelens.search import find_snippet, ranked_search
 from codelens.tokenizer import count_terms, tokenize
+from codelens.trie import build_trie
 
 
 def run_crawl(folder: str) -> None:
@@ -23,8 +25,10 @@ def run_crawl(folder: str) -> None:
         total_bytes += doc.size
     print(f"\nDone: {count} files, {total_bytes} bytes of text.")
 
+
 def run_tokens(text: str) -> None:
      print(tokenize(text))
+
 
 def run_stats(folder: str) -> None:
     all_counts = {}
@@ -69,6 +73,18 @@ def run_search(folder: str, query: str, match_any: bool, limit: int) -> None:
             print(f"     linr{snippet[0]}: {snippet[1]}")
 
 
+def run_suggest(folder: str, prefix: str, limit: int) -> None:
+    index = build_index(folder)
+    trie = build_trie(index)
+    words = trie.suggest(prefix.lower(), limit)
+    if not words:
+        print(f"No words start with '{prefix}'.")
+        return
+    print(f"Words starting with '{prefix}':")
+    for word in words:
+        print(f"   {word:<20} in {index.doc_frequency(word)} file(s)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="codelens")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -85,9 +101,13 @@ def main() -> None:
     search_cmd = commands.add_parser("search", help="search a folder")
     search_cmd.add_argument("folder", help="folder to search in")
     search_cmd.add_argument("query", help="what to look for (use quotes)")
-    search_cmd.add_argument("--any", action="store_true", 
-                            help="match files with ANY word instead of ALL words")
+    search_cmd.add_argument("--any", action="store_true", help="match files with ANY word instead of ALL words")
     search_cmd.add_argument("--limit",type=int, default=10, help="how many results to show (default 10)")
+
+    suggest_cmd = commands.add_parser("suggest", help="autocomplete a word start")
+    suggest_cmd.add_argument("folder", help="folder to learn words from")
+    suggest_cmd.add_argument("prefix", help="the first letter of a word")
+    suggest_cmd.add_argument("--limit", type=int, default=5, help="how many suggestions (default 5)")
 
     args = parser.parse_args()
 
@@ -99,6 +119,8 @@ def main() -> None:
         run_stats(args.folder)
     elif args.command == "search":
         run_search(args.folder, args.query, args.any, args.limit)
+    elif args.command == "suggest":
+        run_suggest(args.folder, args.prefix, args.limit)
 
 
 if __name__ == "__main__":
