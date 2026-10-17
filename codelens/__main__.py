@@ -1,4 +1,5 @@
 """Command line entry point: 
+
     python -m codelens crawl <folder>
     python -m codelens tokens "some text"
     python -m codelens stats <folder>
@@ -14,6 +15,7 @@ from codelens.index import build_index
 from codelens.search import find_snippet, ranked_search
 from codelens.tokenizer import count_terms, tokenize
 from codelens.trie import build_trie
+from codelens.typo import correct_words
 
 
 def run_crawl(folder: str) -> None:
@@ -55,13 +57,22 @@ def run_search(folder: str, query: str, match_any: bool, limit: int) -> None:
     index = build_index(folder)
     build_seconds = time.perf_counter() - start
 
+    #Step 1: forgive typos (only words the index does not know).
+    typed = tokenize(query)
+    fixed, changes = correct_words(index, typed)
+    search_text = " ".join(fixed)
+
+
+    # Step 2: search and rank.
     start = time.perf_counter()
     total, best = ranked_search(index, query, limit, match_any)
     search_ms = (time.perf_counter() - start) * 1000
 
-    words = list(dict.fromkeys(tokenize(query)))
+    words = list(dict.fromkeys(fixed))
     print(f"Indexed {index.doc_count} files "
           f"({index.vocabulary_size} unique words) in {build_seconds:.2f} s")
+    for typed_word, new_word in changes:
+        print(f"No match for '{typed_word}', showing rresult for '{new_word}' ")
     print(f"Found {total} file(s) for {words} in {search_ms:.3f} ms, "
           f"showing the best {len(best)}\n")
 
@@ -70,7 +81,7 @@ def run_search(folder: str, query: str, match_any: bool, limit: int) -> None:
         print(f"{rank:>2}. {path}   (score {score:.2f})")
         snippet = find_snippet(folder, path, words)
         if snippet:
-            print(f"     linr{snippet[0]}: {snippet[1]}")
+            print(f"     line {snippet[0]}: {snippet[1]}")
 
 
 def run_suggest(folder: str, prefix: str, limit: int) -> None:
