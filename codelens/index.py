@@ -1,4 +1,4 @@
-"""Step 3 of codelens: the inverted index.
+"""Step 3 of CodeLens: the inverted index.
 
 A normal index maps file -> words.
 An INVERTED index flips it: word -> files that contain it.

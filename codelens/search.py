@@ -1,4 +1,4 @@
-"""Step 3 of CodeLens: answwering a query with the inverted index"""
+"""Step 3 of CodeLens: answering a query with the inverted index"""
 
 import math
 from pathlib import Path
