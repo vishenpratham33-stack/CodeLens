@@ -3,7 +3,7 @@
     python -m codelens crawl <folder>
     python -m codelens tokens "some text"
     python -m codelens stats <folder>
-    python -m codelens search <folder> "query" [--any] [--limit N]
+    python -m codelens search <folder> "query" [--any] [--phrase] [--limit N]
     python -m codelens suggest <folder> <prefix> [--limit N]
 """
 
@@ -12,7 +12,7 @@ import time
 
 from codelens.crawler import crawl
 from codelens.index import build_index
-from codelens.search import find_snippet, ranked_search
+from codelens.search import find_snippet, ranked_phrase_search, ranked_search
 from codelens.tokenizer import count_terms, tokenize
 from codelens.trie import build_trie
 from codelens.typo import correct_words
@@ -52,7 +52,7 @@ def run_stats(folder: str) -> None:
             print(f"  {word:<15} {n}")
 
 
-def run_search(folder: str, query: str, match_any: bool, limit: int) -> None:
+def run_search(folder: str, query: str, match_any: bool, limit: int, phrase: bool) -> None:
     start = time.perf_counter()
     index = build_index(folder)
     build_seconds = time.perf_counter() - start
@@ -65,15 +65,19 @@ def run_search(folder: str, query: str, match_any: bool, limit: int) -> None:
 
     # Step 2: search and rank.
     start = time.perf_counter()
-    total, best = ranked_search(index, query, limit, match_any)
+    if phrase:
+        total, best = ranked_phrase_search(index, search_text, limit)
+    else:
+        total, best = ranked_search(index, search_text, limit, match_any)
     search_ms = (time.perf_counter() - start) * 1000
 
     words = list(dict.fromkeys(fixed))
     print(f"Indexed {index.doc_count} files "
           f"({index.vocabulary_size} unique words) in {build_seconds:.2f} s")
     for typed_word, new_word in changes:
-        print(f"No match for '{typed_word}', showing rresult for '{new_word}' ")
-    print(f"Found {total} file(s) for {words} in {search_ms:.3f} ms, "
+        print(f"No match for '{typed_word}', showing results for '{new_word}' ")
+    kind = "the phrase" if phrase else "the words"
+    print(f"Found {total} file(s) with {kind} {words} in {search_ms:.3f} ms, "
           f"showing the best {len(best)}\n")
 
     for rank, (score, doc_id) in enumerate(best, start=1):
@@ -100,7 +104,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="codelens")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    crawl_cmd = commands.add_parser("crawl", help="list the files codelens would read")
+    crawl_cmd = commands.add_parser("crawl", help="list the files Codelens would read")
     crawl_cmd.add_argument("folder", help="folder to scan")
 
     token_cmd = commands.add_parser("tokens", help= "show how a text is split into words")
@@ -113,6 +117,7 @@ def main() -> None:
     search_cmd.add_argument("folder", help="folder to search in")
     search_cmd.add_argument("query", help="what to look for (use quotes)")
     search_cmd.add_argument("--any", action="store_true", help="match files with ANY word instead of ALL words")
+    search_cmd.add_argument("--phrase", action="store_true", help="the words must appear next to each other, in order")
     search_cmd.add_argument("--limit",type=int, default=10, help="how many results to show (default 10)")
 
     suggest_cmd = commands.add_parser("suggest", help="autocomplete a word start")
@@ -129,7 +134,7 @@ def main() -> None:
     elif args.command == "stats":
         run_stats(args.folder)
     elif args.command == "search":
-        run_search(args.folder, args.query, args.any, args.limit)
+        run_search(args.folder, args.query, args.any, args.limit, args.phrase)
     elif args.command == "suggest":
         run_suggest(args.folder, args.prefix, args.limit)
 
