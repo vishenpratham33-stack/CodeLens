@@ -31,4 +31,4 @@ DOCUMENT_EXTENSIONS = {".pdf", ".docx", ".xlsx"}
 MAX_DOCUMENT_SIZE_BYTES = 20_000_000
 
 # Safety cap on the text taken from one document, whatever it type.
-MAX_TEST_CHARS = 2_000_000
+MAX_TEXT_CHARS = 2_000_000
