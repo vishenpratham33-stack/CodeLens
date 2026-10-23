@@ -1,21 +1,21 @@
-"""Command line entry point: 
-
-    python -m codelens crawl <folder>
-    python -m codelens tokens "some text"
-    python -m codelens stats <folder>
-    python -m codelens search <folder> "query" [--any] [--phrase] [--limit N]
-    python -m codelens suggest <folder> <prefix> [--limit N]
-"""
-
 import argparse
 import time 
 
 from codelens.crawler import crawl
-from codelens.index import build_index
 from codelens.search import find_snippet, ranked_phrase_search, ranked_search
 from codelens.tokenizer import count_terms, tokenize
 from codelens.trie import build_trie
 from codelens.typo import correct_words
+from codelens.updater import UpdateReport, update_index
+
+
+def describe(report: UpdateReport, seconds: float) -> str:
+    """One readable ;ine about what happend to the saved index."""
+    if report.mode == "build":
+        return f"Index built: {report.added} files in {seconds:.2f} s"
+    if report.mode == "updated":
+        return (f"Index updated in {seconds:.2f} s (+{report.added} new, "f"~{report.changed} changed, -{report.removed} removed")
+    return f"Index loaded from disk in {seconds:.2f} s, nothing changed"
 
 
 def run_crawl(folder: str) -> None:
@@ -52,9 +52,9 @@ def run_stats(folder: str) -> None:
             print(f"  {word:<15} {n}")
 
 
-def run_search(folder: str, query: str, match_any: bool, limit: int, phrase: bool) -> None:
+def run_search(folder: str, query: str, match_any: bool, limit: int, phrase: bool, rebuild: bool) -> None:
     start = time.perf_counter()
-    index = build_index(folder)
+    index, report = update_index(folder, rebuild)
     build_seconds = time.perf_counter() - start
 
     #Step 1: forgive typos (only words the index does not know).
@@ -88,8 +88,16 @@ def run_search(folder: str, query: str, match_any: bool, limit: int, phrase: boo
             print(f"     line {snippet[0]}: {snippet[1]}")
 
 
+def run_index(folder: str, rebuild: bool) -> None:
+    start = time.perf_counter()
+    index, report = update_index(folder, rebuild)
+    seconds = time.perf_counter() - start
+    print(describe(report, seconds))
+    print(f"{index.doc_count} files, {index.vocabulary_size} unique words.")
+
+
 def run_suggest(folder: str, prefix: str, limit: int) -> None:
-    index = build_index(folder)
+    index, _ = update_index(folder)
     trie = build_trie(index)
     words = trie.suggest(prefix.lower(), limit)
     if not words:
@@ -119,11 +127,16 @@ def main() -> None:
     search_cmd.add_argument("--any", action="store_true", help="match files with ANY word instead of ALL words")
     search_cmd.add_argument("--phrase", action="store_true", help="the words must appear next to each other, in order")
     search_cmd.add_argument("--limit",type=int, default=10, help="how many results to show (default 10)")
+    search_cmd.add_argument("--rebuild", action="store_true", help="ignore the saved index and built it again")
 
     suggest_cmd = commands.add_parser("suggest", help="autocomplete a word start")
     suggest_cmd.add_argument("folder", help="folder to learn words from")
     suggest_cmd.add_argument("prefix", help="the first letter of a word")
     suggest_cmd.add_argument("--limit", type=int, default=5, help="how many suggestions (default 5)")
+
+    index_cmd = commands.add_parser("index", help="build or update the saved index")
+    index_cmd.add_argument("folder", help="folder to index")
+    index_cmd.add_argument("--rebuild", action="store_true", help="ignore the saved index and build it again")
 
     args = parser.parse_args()
 
@@ -134,9 +147,11 @@ def main() -> None:
     elif args.command == "stats":
         run_stats(args.folder)
     elif args.command == "search":
-        run_search(args.folder, args.query, args.any, args.limit, args.phrase)
+        run_search(args.folder, args.query, args.any, args.limit, args.phrase, args.rebuild)
     elif args.command == "suggest":
         run_suggest(args.folder, args.prefix, args.limit)
+    elif args.command == "index":
+        run_index(args.folder, args.rebuild)
 
 
 if __name__ == "__main__":

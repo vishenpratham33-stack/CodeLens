@@ -1,11 +1,5 @@
-"""Step 3 of CodeLens: the inverted index.
 
-A normal index maps file -> words.
-An INVERTED index flips it: word -> files that contain it.
-That flip is what makes searching fast.
-"""
-
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from codelens.crawler import crawl
 from codelens.tokenizer import tokenize
@@ -19,7 +13,6 @@ class InvertedIndex:
         self._last_doc_id = -1
 
     def add_document(self, doc_id: int, path: str, tokens: List[str], size: int = 0, modified: float = 0.0) -> None:
-        """Add one file. doc_ids must arrive in increasing order."""
         if doc_id <= self._last_doc_id:
             raise ValueError("doc_id must keep increasing")
         self._last_doc_id = doc_id
@@ -34,10 +27,45 @@ class InvertedIndex:
             self.postings.setdefault(word, {}).setdefault(doc_id, []).append(position)
 
 
+    @property
+    def next_doc_id(self) -> int:
+        return self._last_doc_id + 1
+
+    def remove_documents(self, doc_ids: Set[int]) -> None:
+        if not doc_ids:
+            return
+        for doc_id in doc_ids:
+            self.docs.pop(doc_id, None)
+        for word in list(self.postings):
+            entry = self.postings[word]
+            for doc_id in doc_ids:
+                entry.pop(doc_id, None)
+            if not entry:
+                del self.postings[word]   
+
+    def to_dict(self) -> dict:
+        return {
+            "docs": {str(i): meta for i, meta in self.docs.items()},
+            "postings": {
+                word: {str(i): positions for i, positions in entry.items()}
+                for word, entry in self.postings.items()
+            },
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "InvertedIndex":
+        index = cls()
+        index.docs = {int(i): meta for i, meta in data["docs"].items()}
+        index.postings = {
+            word: {int(i): list(pos) for i, pos in sorted(
+                entry.items(), key=lambda pair: int(pair[0]))}
+            for word, entry in data["postings"].items()
+        }
+        index._last_doc_id = max(index.docs, default=-1)
+        return index
+
+
     def doc_ids(self, word: str) -> List[int]:
-        """Sorted list of documents that contain word (empty if none)."""
-        #dictionaries remember insertion order, and ids were added in
-        #increasing order, so this list is already sorted.
         return list(self.postings.get(word, {}))
 
     
@@ -46,7 +74,6 @@ class InvertedIndex:
 
 
     def doc_frequency(self, word: str) -> int:
-        """In how many documents does word appear?"""
         return len(self.postings.get(word, {}))
 
     @property
@@ -58,7 +85,6 @@ class InvertedIndex:
         return len(self.postings)
     
 def build_index(folder: str) -> InvertedIndex:
-    """Crawl a folder, tokeenize every file, and return the finished index."""
     index = InvertedIndex()
     for doc in crawl(folder):
         index.add_document(

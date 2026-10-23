@@ -1,14 +1,13 @@
-"""Step 3 of CodeLens: answering a query with the inverted index"""
-
 import math
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from codelens.crawler import is_inside, read_text
+from codelens.crawler import is_inside
 from codelens.heap import top_k
 from codelens.index import InvertedIndex
 from codelens.scoring import idf, tf_idf_score
 from codelens.tokenizer import tokenize
+from codelens.reader import read_file
 
 
 def intersect_sorted(a: List[int], b: List[int]) -> List[int]:
@@ -125,7 +124,7 @@ def find_snippet(root: str, path: str, words: List[str]) -> Optional[Tuple[int, 
     if not is_inside(root_path, full):
         return None
     try:
-        text = read_text(full)
+        text = read_file(full)
     except OSError:
         return None
     if text is None:
