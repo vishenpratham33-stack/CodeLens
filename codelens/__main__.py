@@ -1,3 +1,13 @@
+"""Command line entry point.
+    python -m codelens crawl <folder>
+    python -m codelens tokens "some text"
+    python -m codelens stats <folder>
+    python -m codelens search <folder> "query" [--any] [--phrase] [--limit N]
+    python -m codelens suggest <folder> <prefix> [--limit N]
+    python -m codelens index <folder> [--rebuild]
+    python -m codelens serve [--host H] [--port N] [--data-dir D] [--folder F]
+"""
+
 import argparse
 import time 
 
@@ -57,13 +67,10 @@ def run_search(folder: str, query: str, match_any: bool, limit: int, phrase: boo
     index, report = update_index(folder, rebuild)
     build_seconds = time.perf_counter() - start
 
-    #Step 1: forgive typos (only words the index does not know).
     typed = tokenize(query)
     fixed, changes = correct_words(index, typed)
     search_text = " ".join(fixed)
 
-
-    # Step 2: search and rank.
     start = time.perf_counter()
     if phrase:
         total, best = ranked_phrase_search(index, search_text, limit)
@@ -94,6 +101,31 @@ def run_index(folder: str, rebuild: bool) -> None:
     seconds = time.perf_counter() - start
     print(describe(report, seconds))
     print(f"{index.doc_count} files, {index.vocabulary_size} unique words.")
+
+
+def lan_address() -> str:
+    """The address of this computer on the local network (for phones)."""
+    import socket
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("10.255.255.255", 1))       
+        return probe.getsockname()[0]
+    except OSError:
+        return "your-computer-address"
+    finally:
+        probe.close()
+
+
+def run_serve(host: str, port: int, data_dir: str, folder: str) -> None:
+    import uvicorn
+    from codelens.api.server import create_app
+    from codelens.paths import web_dir
+    app = create_app(data_dir, shared_folder=folder, web_dir=web_dir())
+    print(f"CodeLens is running at http://{host}:{port}  (stop with Ctrl + C)", flush=True)
+    if host == "0.0.0.0":
+        print(f"From a phone on the same Wi-Fi, open http://{lan_address()}:{port}")
+        print("Warning: this connection is not encrypted. Use a network you trust.")
+    uvicorn.run(app, host=host, port=port)
 
 
 def run_suggest(folder: str, prefix: str, limit: int) -> None:
@@ -138,6 +170,12 @@ def main() -> None:
     index_cmd.add_argument("folder", help="folder to index")
     index_cmd.add_argument("--rebuild", action="store_true", help="ignore the saved index and build it again")
 
+    serve_cmd = commands.add_parser("serve", help="start the web server")
+    serve_cmd.add_argument("--host", default="127.0.0.1", help="127.0.0.1 = this computer only (default)")
+    serve_cmd.add_argument("--port", type=int, default=8000)
+    serve_cmd.add_argument("--data-dir", default="codelens_data", help="where accounts and user files are kept")
+    serve_cmd.add_argument("--folder", default=None, help="search this existing folder for every user (no uploads)")
+
     args = parser.parse_args()
 
     if args.command == "crawl":
@@ -152,6 +190,8 @@ def main() -> None:
         run_suggest(args.folder, args.prefix, args.limit)
     elif args.command == "index":
         run_index(args.folder, args.rebuild)
+    elif args.command == "serve":
+        run_serve(args.host, args.port, args.data_dir, args.folder)
 
 
 if __name__ == "__main__":

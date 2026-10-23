@@ -80,3 +80,13 @@ def test_damaged_saved_index_is_rebuilt(tmp_path):
     index, report = update_index(str(tmp_path))
     assert report.mode == "built"
     assert len(search_all(index, "alpha")) == 1
+
+
+def test_an_index_already_in_memory_can_be_given(tmp_path):
+    write(tmp_path, "a.py", "alpha beta")
+    index, _ = update_index(str(tmp_path))
+    write(tmp_path, "b.py", "gamma delta")
+    same_index, report = update_index(str(tmp_path), current=index)
+    assert same_index is index
+    assert report.added == 1
+    assert len(search_all(index, "gamma")) == 1
