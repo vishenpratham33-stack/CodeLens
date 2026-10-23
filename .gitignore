@@ -9,3 +9,4 @@ build/
 .egg-info/
 codelens_index/
 .codelens/
+demo/
