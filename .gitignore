@@ -11,3 +11,7 @@ codelens_index/
 codelens_data/
 .codelens/
 demo/
+*.spec
+dist/
+build/
+github_files.txt
