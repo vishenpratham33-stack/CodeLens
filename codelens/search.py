@@ -1,3 +1,5 @@
+"""Step 3 of CodeLens: answering a query with the inverted index."""
+
 import math
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -5,9 +7,9 @@ from typing import List, Optional, Tuple
 from codelens.crawler import is_inside
 from codelens.heap import top_k
 from codelens.index import InvertedIndex
+from codelens.reader import read_file
 from codelens.scoring import idf, tf_idf_score
 from codelens.tokenizer import tokenize
-from codelens.reader import read_file
 
 
 def intersect_sorted(a: List[int], b: List[int]) -> List[int]:
@@ -47,8 +49,8 @@ def union_sorted(a: List[int], b: List[int]) -> List[int]:
 
 
 def search_all(index: InvertedIndex, query: str) -> List[int]:
-    """"AND search: documents that contain EVERY word of the query."""
-    words = list(dict.fromkeys(tokenize(query))) # unique, same order
+    """AND search: documents that contain EVERY word of the query."""
+    words = list(dict.fromkeys(tokenize(query)))   # unique, same order
     if not words:
         return []
     lists = [index.doc_ids(word) for word in words]
@@ -69,10 +71,11 @@ def search_any(index: InvertedIndex, query: str) -> List[int]:
     return result
 
 
-def ranked_search(index: InvertedIndex, query: str, k: int = 10, match_any: bool = False) -> Tuple[int, List[Tuple[float, int]]]:
+def ranked_search(index: InvertedIndex, query: str, k: int = 10,
+                  match_any: bool = False) -> Tuple[int, List[Tuple[float, int]]]:
     """Find matches, score them, and keep only the best k.
-    
-    Return(how many files matched in total, [(score, doc_id), ...]).
+
+    Returns (how many files matched in total, [(score, doc_id), ...]).
     """
     words = list(dict.fromkeys(tokenize(query)))
     doc_ids = search_any(index, query) if match_any else search_all(index, query)
@@ -82,8 +85,10 @@ def ranked_search(index: InvertedIndex, query: str, k: int = 10, match_any: bool
 
 def phrase_positions(index: InvertedIndex, words: List[str], doc_id: int) -> List[int]:
     """Where does the exact phrase start inside this document?
-    
-    Words must sit next to each other, in order. Example: for the phrase "sliding window" a start position p is good if "sliding" is at p and "window  is at p + 1.
+
+    Words must sit next to each other, in order. Example: for the phrase
+    "sliding window" a start position p is good if "sliding" is at p and
+    "window" is at p + 1.
     """
     if not words:
         return []
@@ -92,24 +97,25 @@ def phrase_positions(index: InvertedIndex, words: List[str], doc_id: int) -> Lis
         here = set(index.positions(words[offset], doc_id))
         starts = {p for p in starts if p + offset in here}
         if not starts:
-            return[]
+            return []
     return sorted(starts)
 
 
 def search_phrase(index: InvertedIndex, query: str) -> List[int]:
     """Documents that contain the query words next to each other, in order."""
-    words = tokenize(query)                       # keep order AND repeats
+    words = tokenize(query)                      # keep order AND repeats
     if not words:
         return []
-    candidates = search_all(index, query)         # first: files with every word
+    candidates = search_all(index, query)        # first: files with every word
     return [d for d in candidates if phrase_positions(index, words, d)]
 
 
-def ranked_phrase_search(index: InvertedIndex, query: str, k: int = 10) -> Tuple[int, List[Tuple[float, int]]]:
-    """Phrase search, best k first. the phrase is second like ONE rare word."""
+def ranked_phrase_search(index: InvertedIndex, query: str, k: int = 10
+                         ) -> Tuple[int, List[Tuple[float, int]]]:
+    """Phrase search, best k first. The phrase is scored like ONE rare word."""
     words = tokenize(query)
     doc_ids = search_phrase(index, query)
-    # A phrase is rarer than any of its words, so we add there IDF values.
+    # A phrase is rarer than any of its words, so we add their IDF values.
     phrase_idf = sum(idf(index, word) for word in dict.fromkeys(words))
     scored = []
     for doc_id in doc_ids:
@@ -117,14 +123,11 @@ def ranked_phrase_search(index: InvertedIndex, query: str, k: int = 10) -> Tuple
         scored.append(((1 + math.log(times)) * phrase_idf, doc_id))
     return len(doc_ids), top_k(scored, k)
 
-def find_snippet(root: str, path: str, words: List[str]) -> Optional[Tuple[int, str]]:
+
+def snippet_in_file(full_path: Path, words: List[str]) -> Optional[Tuple[int, str]]:
     """The line of the file that contains the MOST of the query words."""
-    root_path = Path(root).resolve()
-    full = root_path / path
-    if not is_inside(root_path, full):
-        return None
     try:
-        text = read_file(full)
+        text = read_file(full_path)
     except OSError:
         return None
     if text is None:
@@ -136,8 +139,17 @@ def find_snippet(root: str, path: str, words: List[str]) -> Optional[Tuple[int, 
     best_hits = 0
     for line_no, line in enumerate(text.splitlines(), start=1):
         hits = len(wanted & set(tokenize(line)))
-        if hits > best_hits:          # ">" keeps the FIRST line on a tie
+        if hits > best_hits:           # ">" keeps the FIRST line on a tie
             best_line_no, best_text, best_hits = line_no, line.strip()[:100], hits
     if best_hits == 0:
         return None
     return best_line_no, best_text
+
+
+def find_snippet(root: str, path: str, words: List[str]) -> Optional[Tuple[int, str]]:
+    """Like snippet_in_file, for a path relative to root (checked to stay inside root)."""
+    root_path = Path(root).resolve()
+    full = root_path / path
+    if not is_inside(root_path, full):
+        return None
+    return snippet_in_file(full, words)

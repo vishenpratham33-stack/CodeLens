@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0f1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="CodeLens">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <title>CodeLens</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="manifest" href="/static/manifest.json">
+</head>
+<body>
+  <canvas id="bg" aria-hidden="true"></canvas>
+
+  <!-- LOGIN / SIGN UP -->
+  <main id="auth" class="card">
+    <h1>CodeLens</h1>
+    <p class="muted">Find any file by typing a word you remember.</p>
+    <label for="user">Username</label>
+    <input id="user" autocomplete="username" maxlength="20">
+    <label for="pass">Password</label>
+    <input id="pass" type="password" autocomplete="current-password" maxlength="128">
+    <label class="keep"><input id="remember" type="checkbox"> Keep me logged in on this device</label>
+    <div class="row">
+      <button id="login" class="primary">Log in</button>
+      <button id="signup">Create account</button>
+    </div>
+    <p id="auth-msg" class="msg" role="status"></p>
+  </main>
+
+  <!-- THE APP -->
+  <div id="app" hidden>
+    <div id="bar" class="bar" data-mode="wide">
+      <div id="grip" class="grip" title="Drag to move">&#8942;&#8942;</div>
+      <button id="orb" class="orb" title="Open search (Ctrl+K)" aria-label="Open search">&#9906;</button>
+      <input id="q" class="q" placeholder="Search your files...   ( / to focus )"
+             autocomplete="off" aria-label="Search">
+      <label class="chip"><input id="phrase" type="checkbox"> phrase</label>
+      <button id="size" class="tiny" title="Compact or wide (Ctrl+M)" aria-label="Change size">&#8596;</button>
+      <button id="min" class="tiny" title="Minimise (Esc)" aria-label="Minimise">&#8211;</button>
+      <div id="suggest" class="suggest" hidden></div>
+      <div id="resize" class="resize" title="Drag to resize"></div>
+    </div>
+
+    <section id="panel" class="panel">
+      <p id="library" class="muted small" role="status"></p>
+      <p id="status" class="muted" role="status">Add some files, then search.</p>
+      <ul id="results"></ul>
+    </section>
+
+    <aside id="files" class="drawer" hidden>
+      <h2>Your files</h2>
+      <p class="muted" id="files-note"></p>
+      <input id="pick" type="file" multiple accept=".py,.js,.ts,.java,.c,.cpp,.h,.cs,.go,.rs,.html,.css,.json,.md,.txt,.sql,.yml,.yaml,.pdf,.docx,.xlsx">
+      <ul id="filelist"></ul>
+    </aside>
+
+    <nav class="dock">
+      <button id="toggle-files" class="tiny">Files</button>
+      <button id="refresh" class="tiny" hidden title="Look for new and changed files now">Refresh</button>
+      <button id="install" class="tiny" hidden>Install app</button>
+      <button id="anim" class="tiny" title="Next animation (or press keys 1 to 6)">Animation: <span id="anim-name"></span></button>
+      <button id="logout" class="tiny">Log out</button>
+    </nav>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

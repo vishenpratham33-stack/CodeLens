@@ -1,0 +1,43 @@
+name: release
+
+# Builds the app for Windows, macOS and Linux whenever you push a tag like v1.0,
+# and attaches the three files to a GitHub Release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            built: CodeLens.exe
+            asset: CodeLens-windows.exe
+            data: "web;web"
+          - os: macos-latest
+            built: CodeLens
+            asset: CodeLens-macos
+            data: "web:web"
+          - os: ubuntu-latest
+            built: CodeLens
+            asset: CodeLens-linux
+            data: "web:web"
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pyinstaller
+      - run: pyinstaller --onefile --name CodeLens --add-data "${{ matrix.data }}" --collect-submodules uvicorn --collect-submodules codelens run_codelens.py
+      - run: mv "dist/${{ matrix.built }}" "dist/${{ matrix.asset }}"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.asset }}
