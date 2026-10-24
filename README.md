@@ -2,12 +2,11 @@
 
 ![tests](https://github.com/vishenpratham33-stack/CodeLens/actions/workflows/tests.yml/badge.svg)
 
-**Live demo:** https://YOUR-SERVICE.onrender.com  (fictional sample files; the free server sleeps when idle, so the first load can take about a minute)
+**Live demo:** https://codelens-niw7.onrender.com  (fictional sample files; the free server sleeps when idle, so the first load can take about a minute)
 
 A search engine for code and documents, **built from scratch in Python**: no search library, every data structure written by hand.
 Type a word or phrase you remember, and CodeLens finds the file: it **finds your files by itself** (Documents, Desktop, Downloads), reads code, text, PDF, Word and Excel, and gives ranked results with typo correction, autocomplete and phrase search. Works from a command line, a web page, or as an installed app.
 
-<!-- Put a screenshot or a short GIF of the search bar here. This is the single most useful thing in the README. -->
 ![CodeLens screenshot](docs/screenshot.png)
 
 ## What it does
@@ -87,7 +86,7 @@ Other ways to run it:
 The repository contains a `Dockerfile` and a `render.yaml`. The deployed demo searches a set of fictional sample files in `sample_docs/`, with a ready-made demo account, so anybody can try it without installing anything.
 
 1. On render.com: **New, Blueprint** (or **New, Web Service** with the Docker runtime), and connect this repository.
-2. Accept the settings from `render.yaml`. Render builds the image and gives you an address like `https://codelens-xxxx.onrender.com`.
+2. Accept the settings from `render.yaml`. Render builds the image and gives you an address like `https://codelens-xxxx.onrender.com.
 3. Put that address at the top of this README.
 
 Suggested searches for the demo: `invoice`, `sliding window` (tick *phrase*), `masala chai`, `budget rent`, `goa beach`, `electricty` (a typo).

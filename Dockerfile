@@ -20,6 +20,5 @@ USER appuser
 EXPOSE 8000
 VOLUME /data
 
-# Render (and similar hosts) tell the program which port to use in the PORT variable.
-# This image searches the sample documents. For your own files, run the app on your computer.
+
 CMD python -m codelens serve --host 0.0.0.0 --port ${PORT:-8000} --data-dir /data --folder /app/sample_docs --behind-proxy
