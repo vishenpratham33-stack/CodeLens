@@ -8,5 +8,6 @@ dist/
 build/
 .egg-info/
 codelens_index/
+codelens_data/
 .codelens/
 demo/
