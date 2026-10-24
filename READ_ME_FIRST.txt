@@ -1,14 +1,19 @@
-CodeLens upgrade: "My files" mode, upload fix, installable app
-==============================================================
+CodeLens complete pack (replaces the earlier Upgrade Pack)
+==========================================================
+Contains everything added after Section 7: My files mode, the upload fix, the web page,
+installable-app files, Docker + Render files, sample documents, README, LICENSE, CI files.
 
-1. Close the server if it is running (Ctrl + C in its terminal).
-2. Copy the folders of this pack INTO C:\Projects\CodeLens and choose "Replace" when asked.
-   The paths inside the pack match your project: codelens\..., web\..., tests\..., .github\...
-3. Delete the old file  web\icon.svg  (it is replaced by three PNG icons).
-4. No new libraries are needed. Run:  python -m pytest -q      (expect 154 passed)
-5. Start it:  python -m codelens serve --my-files
-   Open http://127.0.0.1:8000, create an account (first time), and type a word you remember.
-6. Add this line to .gitignore if it is not there:  codelens_data/
-   Then:  git add .   git commit -m "My files mode, upload fix, installable app"   git push
+1. Stop the server if it runs (Ctrl + C).
+2. Copy the folders and files of this pack INTO C:\Projects\CodeLens and choose "Replace".
+   (Your own files that are not in the pack are not touched.)
+3. Delete the old  web\icon.svg  if it exists.
+4. Add these lines to .gitignore if they are not there:
+       codelens_data/
+       .codelens/
+       demo/
+5. pip install -r requirements-dev.txt
+6. python -m pytest -q          -> expect 162 passed
+7. python -m codelens serve --my-files
+8. git add .   git commit -m "My files mode, demo mode, Docker and Render files"   git push
 
-The guide PDF (CodeLens_Upgrade_My_Files_and_Install.pdf) explains every change.
+Then follow the guide PDF to put it on Render.

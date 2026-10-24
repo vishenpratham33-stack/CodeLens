@@ -37,7 +37,6 @@ def default_roots() -> List[Path]:
 
 
 class Library:
-
     def __init__(self, roots: List[Union[str, Path]], store_dir: Union[str, Path],
                  refresh_seconds: float = 120.0) -> None:
         self.roots = [Path(r).resolve() for r in roots]
@@ -45,7 +44,7 @@ class Library:
         self.refresh_seconds = refresh_seconds
         self.index: Optional[InvertedIndex] = None
         self.lock = threading.RLock()             # held while the index is read or changed
-        self._status = {"state": "starting", "pending": 0, "updated": None, "error": None}
+        self._status = {"state": "starting", "pending": 0, "updated": None, "error": None, "missing": []}
         self._status_lock = threading.Lock()
         self._wake = threading.Event()
         self._stop = threading.Event()
@@ -70,8 +69,14 @@ class Library:
         """Make the index match the disk. Safe to run while searches happen."""
         try:
             self._set(state="scanning", error=None)
+            usable = [r for r in self.roots if r.is_dir()]
+            missing = [str(r) for r in self.roots if not r.is_dir()]
+            self._set(missing=missing)
+            if not usable:
+                self._set(state="error", error="None of the folders exists: " + ", ".join(missing))
+                return
             on_disk: Dict[str, FileInfo] = {}
-            for root in self.roots:
+            for root in usable:
                 for info in list_files(str(root), absolute=True):
                     on_disk[info.path] = info
                     if self._stop.is_set():
@@ -142,4 +147,5 @@ class Library:
     def contains(self, path: str) -> bool:
         """Is this exact path one of the indexed files? (the only files we ever hand out)"""
         with self.lock:
-            return self.index is not None and any(meta["path"] == path for meta in self.index.docs.values())
+            return self.index is not None and any(
+                meta["path"] == path for meta in self.index.docs.values())

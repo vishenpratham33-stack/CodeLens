@@ -10,6 +10,7 @@
 """
 
 import argparse
+import os
 import time
 from pathlib import Path
 
@@ -122,13 +123,29 @@ def lan_address() -> str:
         probe.close()
 
 
-def run_serve(host: str, port: int, data_dir: str, folders, my_files: bool) -> None:
+def missing_folders(folders) -> list:
+    """The names in `folders` that are not real folders on this computer."""
+    return [f for f in folders if not Path(f).expanduser().is_dir()]
+
+
+def run_serve(host: str, port: int, data_dir: str, folders, my_files: bool,
+              behind_proxy: bool = False) -> None:
     import uvicorn                       # imported here: only `serve` needs it
     from codelens.api.server import create_app
     from codelens.library import Library, default_roots
     from codelens.paths import web_dir
 
     library = None
+    if folders:
+        folders = [str(Path(f).expanduser()) for f in folders]
+        bad = missing_folders(folders)
+        if bad:
+            print("These folders do not exist on this computer:")
+            for name in bad:
+                print("  ", name)
+            print("Use a real folder, for example:  --folder \"C:\\Users\\YOURNAME\\Documents\"")
+            print("or let CodeLens choose Documents, Desktop and Downloads:  --my-files")
+            return
     if folders or my_files:
         roots = list(folders or []) or default_roots()
         if not roots:
@@ -144,7 +161,11 @@ def run_serve(host: str, port: int, data_dir: str, folders, my_files: bool) -> N
     if host == "0.0.0.0":
         print(f"From a phone on the same Wi-Fi, open http://{lan_address()}:{port}")
         print("Warning: this connection is not encrypted. Use a network you trust.")
-    uvicorn.run(app, host=host, port=port)
+    if behind_proxy:
+        # on Render and similar hosts, a proxy sits in front: trust its X-Forwarded-For
+        uvicorn.run(app, host=host, port=port, proxy_headers=True, forwarded_allow_ips="*")
+    else:
+        uvicorn.run(app, host=host, port=port)
 
 
 def run_suggest(folder: str, prefix: str, limit: int) -> None:
@@ -198,11 +219,14 @@ def main() -> None:
     serve_cmd = commands.add_parser("serve", help="start the web server")
     serve_cmd.add_argument("--host", default="127.0.0.1",
                            help="127.0.0.1 = this computer only (default)")
-    serve_cmd.add_argument("--port", type=int, default=8000)
+    serve_cmd.add_argument("--port", type=int, default=int(os.environ.get("PORT", 8000)),
+                           help="default 8000, or the PORT variable if the host sets one")
     serve_cmd.add_argument("--data-dir", default="codelens_data",
                            help="where accounts and user files are kept")
     serve_cmd.add_argument("--folder", action="append", default=None,
                            help="find the files in this folder by itself (can be repeated)")
+    serve_cmd.add_argument("--behind-proxy", action="store_true",
+                           help="use when a hosting service (Render...) forwards the requests")
     serve_cmd.add_argument("--my-files", action="store_true",
                            help="find the files in Documents, Desktop and Downloads by itself")
 
@@ -222,7 +246,7 @@ def main() -> None:
     elif args.command == "index":
         run_index(args.folder, args.rebuild)
     elif args.command == "serve":
-        run_serve(args.host, args.port, args.data_dir, args.folder, args.my_files)
+        run_serve(args.host, args.port, args.data_dir, args.folder, args.my_files, args.behind_proxy)
 
 
 if __name__ == "__main__":

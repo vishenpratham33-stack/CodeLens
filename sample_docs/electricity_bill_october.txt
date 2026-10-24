@@ -1,0 +1,6 @@
+ELECTRICITY BILL, October 2026
+Consumer: Sample Household, Lucknow
+Units consumed: 312
+Bill amount: 2,184 INR
+Due date: 5 November 2026
+Tip: the peak-hour units cost more, so run the washing machine before 6 pm.

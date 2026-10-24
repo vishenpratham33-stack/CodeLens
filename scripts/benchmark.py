@@ -2,6 +2,7 @@
 
     python scripts/benchmark.py 10000
 """
+
 import os
 import random
 import shutil
@@ -13,9 +14,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from codelens.search import ranked_search  # noqa: E402
-from codelens.storage import index_path  # noqa: E402
-from codelens.updater import update_index  # noqa: E402
+from codelens.search import ranked_search                    # noqa: E402
+from codelens.storage import index_path                      # noqa: E402
+from codelens.updater import update_index                    # noqa: E402
 
 SYLLABLES = ["ka", "to", "ri", "me", "su", "la", "no", "vi", "pe", "da", "ro", "xi", "bu", "fa", "gen", "tor", "ter", "ing"]
 
@@ -28,7 +29,7 @@ def make_vocabulary(size: int, rng: random.Random):
 
 
 def make_files(folder: Path, count: int, vocab, rng: random.Random) -> int:
-    weights = [1 / (rank + 1) for rank in range(len(vocab))]  # a few common words, many rare
+    weights = [1 / (rank + 1) for rank in range(len(vocab))]      # a few common words, many rare
     tokens = 0
     for number in range(count):
         words = rng.choices(vocab, weights, k=rng.randint(150, 400))

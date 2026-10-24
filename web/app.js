@@ -6,6 +6,7 @@
   var mode = "workspace";       // "library" = My files mode: the server finds the files by itself
   var canOpen = false;          // true only when this page runs on the same computer as the server
   var pollTimer = null;
+  var demoTry = null;           // demo servers suggest some searches to try
 
   // ---------- small helpers ----------
   function save(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* private mode */ } }
@@ -66,7 +67,9 @@
     $("toggle-files").hidden = library; $("files").hidden = true; $("refresh").hidden = !library;
     $("q").placeholder = library ? "Type a word or phrase you remember...   ( / to focus )"
                                  : "Search your files...   ( / to focus )";
-    setStatus(library ? "Type a word or phrase from the file you are looking for." : "Add some files, then search.");
+    setStatus(library ? (demoTry ? "Demo files are fictional. Try:   " + demoTry.join("   ·   ")
+                                 : "Type a word or phrase from the file you are looking for.")
+                      : "Add some files, then search.");
   }
   // My files mode: show what the server is doing in the background
   function pollLibrary() {
@@ -74,7 +77,8 @@
       var box = $("library"); box.textContent = "";
       var where = s.roots.map(function (r) { return r.split(/[\\/]/).filter(Boolean).pop(); }).join(", ");
       if (s.state === "ready") {
-        box.textContent = "Searching " + s.files + " files in " + where + ".";
+        box.textContent = "Searching " + s.files + " files in " + where + "."
+          + (s.missing && s.missing.length ? " Folder not found: " + s.missing.join(", ") + "." : "");
       } else if (s.state === "error") {
         box.textContent = "Problem while reading files: " + s.error;
       } else {
@@ -394,6 +398,14 @@
     frame = requestAnimationFrame(loop);
   }
   $("anim").addEventListener("click", function () { setAnimation(load("cl_anim", 0) + 1); });
+
+  // ---------- demo servers: fill in the shared demo account ----------
+  fetch("/api/health").then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.demo && !token) {
+      $("user").value = d.demo.username; $("pass").value = d.demo.password; demoTry = d.demo["try"] || null;
+      authMessage("Demo mode: the demo account is filled in. Just press Log in.", true);
+    }
+  }).catch(function () { /* not a demo server */ });
 
   // ---------- install as an app (phones, tablets, laptops) ----------
   var installEvent = null;

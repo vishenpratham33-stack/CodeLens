@@ -1,0 +1,12 @@
+# Render "Blueprint": describes the web service, so it can be created from the repository.
+services:
+  - type: web
+    name: codelens
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: CODELENS_SECRET        # signs the login tokens; Render generates a random one
+        generateValue: true
+      - key: CODELENS_DEMO_LOGIN    # a public demo account, filled in on the login page
+        value: demo:CodeLens-demo-2026

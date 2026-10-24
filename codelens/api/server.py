@@ -118,7 +118,8 @@ def create_app(data_dir, secret: Optional[bytes] = None,
                web_dir: Optional[Path] = None,
                limits: Optional[dict] = None,
                library: Optional[Library] = None,
-               file_opener: Callable[[str], None] = open_with_default_app) -> FastAPI:
+               file_opener: Callable[[str], None] = open_with_default_app,
+               demo_login: Optional[str] = None) -> FastAPI:
     data_dir = Path(data_dir)
     secret = secret or load_or_create_secret(data_dir)
     if library is None and shared_folder:
@@ -130,7 +131,21 @@ def create_app(data_dir, secret: Optional[bytes] = None,
     index_lock = threading.Lock()
     cache: Dict[str, Tuple[InvertedIndex, float]] = {}   # folder -> (index, when it was checked)
 
+    # A public demo: one shared account, shown on the login page ("name:password").
+    demo_login = demo_login if demo_login is not None else os.environ.get("CODELENS_DEMO_LOGIN", "")
+    demo = None
+    if ":" in demo_login:
+        demo_name, demo_password = demo_login.split(":", 1)
+        try:
+            demo_name = store.register(demo_name, demo_password)
+        except UserExists:
+            demo_name = demo_name.strip().lower()
+        demo = {"username": demo_name, "password": demo_password,
+                "try": ["invoice", "sliding window", "masala chai", "budget rent", "goa beach", "electricty"]}
+
     cfg = {"login": (10, 60), "login_user": (5, 60), "register": (5, 60), "search": (60, 60)}
+    if demo:                                  # many visitors share one account: allow more logins
+        cfg.update({"login": (120, 60), "login_user": (60, 60)})
     cfg.update(limits or {})
     login_limiter = SlidingWindowLimiter(*cfg["login"])
     login_user_limiter = SlidingWindowLimiter(*cfg["login_user"])
@@ -195,7 +210,7 @@ def create_app(data_dir, secret: Optional[bytes] = None,
     # ---------- accounts ----------
     @app.get("/api/health")
     def health():
-        return {"status": "ok"}
+        return {"status": "ok", **({"demo": demo} if demo else {})}
 
     @app.post("/api/register", status_code=201)
     def register(body: Credentials, request: Request):
