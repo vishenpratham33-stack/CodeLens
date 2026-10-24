@@ -129,7 +129,7 @@ query --> tokenizer --> typo fix --> posting lists intersected --> TF-IDF --> he
 
 ## Performance
 
-Measured with `python scripts/benchmark.py 10000` on my own computer:
+Measured with `python scripts/benchmark.py 10000` on a Windows 11 laptop (Ryzen 5, 16 GB RAM):
 
 | What | Result |
 |---|---|
