@@ -37,6 +37,7 @@ def default_roots() -> List[Path]:
 
 
 class Library:
+
     def __init__(self, roots: List[Union[str, Path]], store_dir: Union[str, Path],
                  refresh_seconds: float = 120.0) -> None:
         self.roots = [Path(r).resolve() for r in roots]
@@ -141,5 +142,4 @@ class Library:
     def contains(self, path: str) -> bool:
         """Is this exact path one of the indexed files? (the only files we ever hand out)"""
         with self.lock:
-            return self.index is not None and any(
-                meta["path"] == path for meta in self.index.docs.values())
+            return self.index is not None and any(meta["path"] == path for meta in self.index.docs.values())
